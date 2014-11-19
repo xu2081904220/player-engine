@@ -25,6 +25,8 @@ public class ActionHandler {
 	private static Handler mHandler;
 	private static List<ActionOperation> mList = new ArrayList<ActionOperation>();
 
+	private static Object syncObj = new Object();
+
 	static {
 		Wlog.d(TAG, "init");
 		HandlerThread thread = new HandlerThread("ActionHandler");
@@ -38,8 +40,14 @@ public class ActionHandler {
 
 		@Override
 		public void run() {
-			ActionOperation operation = mList.get(0);
+			ActionOperation operation = null;
+			synchronized (syncObj) {
+				operation = mList.remove(0);
+			}
 			Wlog.d(TAG, "execute:", operation);
+			if (operation == null) {
+				return;
+			}
 			switch (operation) {
 			case PLAY:
 				mPlayerEngine.play();
@@ -64,7 +72,9 @@ public class ActionHandler {
 	};
 
 	public static void execute(ActionOperation operation) {
-		mList.add(operation);
+		synchronized (syncObj) {
+			mList.add(operation);
+		}
 		mHandler.post(mTask);
 	}
 
